@@ -4,8 +4,9 @@ import lombok.Data;
 import org.gsstation.novin.packager.GsPackager;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOMsg;
-import sun.plugin.com.Packager;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 /**
@@ -15,54 +16,58 @@ import java.util.Date;
 @Data
 public class TransactionData {
 
-    String gsId;
-    String ptId;
-    String shiftNo;
-    String dailyNo;
-    int fuelTtc;
-    int epurseTtc;
-    Date fuelTime;
-    Date epurseTime;
-    String fuelType;
-    char transType;
-    String nozzleId;
-    String userCardId;
-    String fuelSamId;
-    double totalAmount;
-    double n;
-    char fuelStatus;
-    double x;
-    double x1;
-    double x2;
-    double x3;
-    double r;
-    double r1;
-    double r2;
-    double r3;
-    int FTC;
-    String paymentSamId;
-    int totalCost;
-    int c;
-    int c1;
-    int c2;
-    int c3;
-    int p;
-    int p1;
-    int p2;
-    int p3;
-    int cashPayment;
-    int cardPayment;
-    int ctc;
-    int TAC;
-    int beforeBalance;
-    int afterBalance;
-    int RFU;
-    char uploadFlag;
-    ISOMsg gsMessage;
+    private String gsId;
+    private String ptId;
+    private String shiftNo;
+    private String dailyNo;
+    private String fuelTtc;
+    private String epurseTtc;
+    private String fuelTime;
+    private String epurseTime;
+    private String fuelType;
+    private String transType;
+    private String nozzleId;
+    private String userCardId;
+    private String fuelSamId;
+    private String totalAmount;
+    private String n;
+    private String fuelStatus;
+    private String x;
+    private String x1;
+    private String x2;
+    private String x3;
+    private String r;
+    private String r1;
+    private String r2;
+    private String r3;
+    private String FTC;
+    private String paymentSamId;
+    private String totalCost;
+    private String c;
+    private String c1;
+    private String c2;
+    private String c3;
+    private String p;
+    private String p1;
+    private String p2;
+    private String p3;
+    private String cashPayment;
+    private String cardPayment;
+    private String ctc;
+    private String TAC;
+    private String beforeBalance;
+    private String afterBalance;
+    private String RFU;
+    private String uploadFlag;
+    private ISOMsg gsMessage;
+
+    public TransactionData() {}
 
     public TransactionData(byte[] receivedStream) throws ISOException {
         gsMessage = new ISOMsg();
         gsMessage.setPackager(new GsPackager());
         gsMessage.unpack(receivedStream);
     }
+
+
 }

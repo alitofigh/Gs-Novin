@@ -2,7 +2,6 @@ package org.gsstation.novin.server;
 
 import org.gsstation.novin.TransactionData;
 import org.jpos.iso.ISOException;
-import org.jpos.iso.ISOUtil;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -13,6 +12,7 @@ import java.net.Socket;
  */
 
 public class DataReceiverServer {
+    static org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(DataReceiverServer.class);
     private ServerSocket serverSocket;
 
 
@@ -32,8 +32,14 @@ public class DataReceiverServer {
         private PrintWriter out;
         private DataInputStream in;
 
+        static int counter = 0;
+
         public DataReceiverHandler(Socket clientSocket) {
             this.clientSocket = clientSocket;
+            logger.info("this thread number: {}", ++counter);
+            System.out.println("this thread number: " + (++counter));
+            System.out.println(clientSocket);
+            System.out.println(this);
         }
 
         @Override
@@ -58,7 +64,7 @@ public class DataReceiverServer {
                             byte[] response = new byte[Integer.parseInt(inLenStr)];
                             in.read(response);
                             TransactionData transactionData = new TransactionData(response);
-                            out.println("---" + new String(response) + "---");
+                            System.out.println("---" + new String(response) + "---");
                         }
 
                     }
