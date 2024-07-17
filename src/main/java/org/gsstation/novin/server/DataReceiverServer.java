@@ -37,6 +37,7 @@ public class DataReceiverServer {
         public DataReceiverHandler(Socket clientSocket) {
             this.clientSocket = clientSocket;
             logger.info("this thread number: {}", ++counter);
+            logger.info("this thread {}", this);
             System.out.println("this thread number: " + (++counter));
             System.out.println(clientSocket);
             System.out.println(this);
@@ -57,7 +58,9 @@ public class DataReceiverServer {
                         int inLenBytes = 0;
                         try {
                             inLenBytes = in.read(inLen);
-                        } catch (EOFException e) {}
+                        } catch (EOFException e) {
+                            logger.error(e.getMessage());
+                        }
 
                         if (inLenBytes == 4) {
                             String inLenStr = new String(inLen);
