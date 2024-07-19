@@ -1,0 +1,18 @@
+<txnmgr name="switch-brain" class="org.jpos.transaction.TransactionManager"
+        logger="main-logger">
+    <property name="space" value="tspace:default"/>
+    <property name="queue" value="transaction-manager-queue"/>
+    <property name="sessions" value="10"/>
+    <property name="debug" value="true"/>
+
+    <participant class="org.gsstation.novin.core.participants.TransactionGroupSelector"
+                 logger="main-logger">
+    </participant>
+
+    <group name="ips-transaction">
+        <participant
+                class="org.gsstation.novin.core.participants.StoreValidation"/>
+    </group>
+    <group name="invalid-transaction">
+    </group>
+</txnmgr>
