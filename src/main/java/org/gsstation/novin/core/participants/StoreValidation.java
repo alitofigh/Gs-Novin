@@ -19,6 +19,7 @@ public class StoreValidation extends BaseParticipant {
         ISOMsg isoMessage = (ISOMsg) context.get(ORIGINAL_MESSAGE_KEY);
         MainLogger.log("message received here -" + isoMessage.getString(3));
         DailyTransactionRecordDao dao = new DailyTransactionRecordDao("");
+
         //dao.store();
 
     }
