@@ -16,11 +16,10 @@ public class StoreValidation extends BaseParticipant {
 
     @Override
     public void doCommit(Context context) {
-        ISOMsg isoMessage = (ISOMsg) context.get(ORIGINAL_MESSAGE_KEY);
+        ISOMsg isoMessage = (ISOMsg) context.get(context.get(ORIGINAL_MESSAGE_KEY));
         MainLogger.log("message received here -" + isoMessage.getString(3));
         DailyTransactionRecordDao dao = new DailyTransactionRecordDao("");
-
-        //dao.store();
-
+        dao.store(convertIso(isoMessage));
+        System.out.println("done store ");
     }
 }

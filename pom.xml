@@ -45,6 +45,12 @@
             <artifactId>ucp</artifactId>
             <version>21.11.0.0</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.10</version>
+        </dependency>
 
 
         <!-- https://mvnrepository.com/artifact/com.liferay/org.mozilla.intl.chardet -->

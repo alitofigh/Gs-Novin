@@ -214,29 +214,7 @@ public class DbConnectionFactory {
                 poolDataSource.setDatabaseName(
                         dbConfigurationReader.getDatabaseName());
             poolDataSource.setSQLForValidateConnection("select 1");
-            // investigate this below, works really? no url formatting error?
-            /*jdbcUrl += ";loginTimeout="
-                    + dbConfigurationReader.getConnectionWaitTimeout()
-                    + ";socketTimeout"
-                    + (dbConfigurationReader.getQueryExecutionTimeout() != 0
-                    ? dbConfigurationReader.getQueryExecutionTimeout()
-                    + SOCKET_TIMEOUT_LATENCY
-                    : 0);*/
-        } /*else if (DERBY == dbConfigurationReader.getTargetDbms()) {
-            poolDataSource.setConnectionFactoryClassName(
-                    dbConfigurationReader.getJdbcDriver());
-            poolDataSource.setServerName(dbConfigurationReader.getHost());
-            poolDataSource.setPortNumber(
-                    Integer.parseInt(dbConfigurationReader.getPort()));
-            poolDataSource.setDatabaseName(dbConfigurationReader.getSid());
-            poolDataSource.setUser(dbConfigurationReader.getUsername() == null
-                    ? "APP" : dbConfigurationReader.getUsername());
-            if (dbConfigurationReader.getPassword() != null)
-                poolDataSource.setPassword(
-                        dbConfigurationReader.getPassword());
-        }*/
-        // TODO implement support for my-sql, jdbcUrl for my-sql example (below)
-        // jdbc:mysql://x.x.x.x:3306/database?connectTimeout=60000&socketTimeout=60000
+        }
         poolDataSource.setURL(jdbcUrl);
         int minPoolSize = dbConfigurationReader.getMinPoolSizeJdbc()
                 != NOT_PRESENT_CONFIG_VALUE
@@ -331,20 +309,6 @@ public class DbConnectionFactory {
         (as many as specified initial size) */
         poolDataSource.setInitialPoolSize(minPoolSize);
     }
-
-    /*private void invalidateDbConnections(Connection connection)
-            throws InvalidConfigurationException, SQLException {
-        String sessionsTerminationQuery =
-                "begin for x in (select Sid, Serial#, machine, program  "
-                        + "from v$session where USERNAME = '"
-                        + username.toUpperCase()
-                        + "' and STATUS = 'INACTIVE' " + "and MACHINE = '"
-                        + InetAddress.getLocalHost() + "')"
-                        + " loop execute immediate "
-                        + "'alter system kill session ''' || x.Sid || ',' || "
-                        + "x.Serial# || ''' immediate'; end loop; end;";
-        new GeneralCommandDbSession().executeUpdate(sessionsTerminationQuery);
-    }*/
 
     @SuppressWarnings("unused")
     public DbConfigurationReader getDbConfigurationReader() {

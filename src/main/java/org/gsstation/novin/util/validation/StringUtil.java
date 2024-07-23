@@ -2,9 +2,9 @@ package org.gsstation.novin.util.validation;
 
 import org.gsstation.novin.core.exception.NotSupportedException;
 import org.jpos.iso.ISOUtil;
-import org.mozilla.intl.chardet.nsDetector;
+/*import org.mozilla.intl.chardet.nsDetector;
 import org.mozilla.intl.chardet.nsPSMDetector;
-import org.mozilla.universalchardet.UniversalDetector;
+import org.mozilla.universalchardet.UniversalDetector;*/
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -107,14 +107,6 @@ public class StringUtil {
         return pan ? maskedPan : maskedPan + panOrTrack2.substring(
                 equalSignIndex, equalSignIndex + 5)
                 + (equalSignAbsent ? "" : "*");
-    }
-
-    public static String maskPanOrTrack2(String panOrTrack2) {
-        return maskPanOrTrack2(panOrTrack2, 6);
-    }
-
-    public static String maskPanOrTrack2Slack(String panOrTrack2) {
-        return maskPanOrTrack2(panOrTrack2, 8);
     }
 
     public static String fixWidth(
@@ -301,7 +293,7 @@ public class StringUtil {
                 appropriateVerb, pluralOrSingularChar);
     }
 
-    public static String tryDetectEncoding2(byte[] encodedBytes) {
+    /*public static String tryDetectEncoding2(byte[] encodedBytes) {
         int lang = nsPSMDetector.ALL;
         nsDetector charsetDetector = new nsDetector(lang) ;
         AtomicReference<String> detectedCharsetAtomic = new AtomicReference<>();
@@ -316,5 +308,5 @@ public class StringUtil {
         universalDetector.handleData(encodedBytes, 0, encodedBytes.length);
         universalDetector.dataEnd();
         return universalDetector.getDetectedCharset();
-    }
+    }*/
 }

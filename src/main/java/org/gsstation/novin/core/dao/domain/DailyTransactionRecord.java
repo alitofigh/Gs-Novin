@@ -5,8 +5,7 @@ import org.jpos.iso.ISOMsg;
 
 import javax.persistence.*;
 import java.math.BigDecimal;
-import java.sql.Date;
-import java.sql.Timestamp;
+import java.util.Date;
 
 @Data
 @Entity
@@ -31,7 +30,7 @@ public class DailyTransactionRecord {
     private Integer epurseTtc;
     @Column(name = "fuel_time")
     @Temporal(TemporalType.TIMESTAMP)
-    private Timestamp fuelTime;
+    private Date fuelTime;
     @Column(name = "epurse_time")
     @Temporal(TemporalType.TIMESTAMP)
     private Date epurseTime;

@@ -6,16 +6,17 @@ import org.gsstation.novin.core.common.system.DeploymentUpdateNotifier;
 import org.gsstation.novin.core.exception.InvalidConfigurationException;
 import org.gsstation.novin.core.logging.GsLogger;
 import org.gsstation.novin.core.logging.MainLogger;
+import org.gsstation.novin.util.security.CryptoUtil;
 
-import java.beans.IntrospectionException;
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+import static org.gsstation.novin.core.common.ProtocolRulesBase.INTEGER_NUMBER_REGEXP;
 import static org.gsstation.novin.core.dao.DbmsType.ORACLE;
 import static org.gsstation.novin.core.dao.DbmsType.SQLSERVER;
+import static org.gsstation.novin.util.security.SecurityUtil.decryptCredentialAllParamsPredefined;
 
 /**
  * Created by A_Tofigh at 07/19/2024
@@ -243,7 +244,9 @@ public class DbConfigurationReader implements Cloneable {
     }
 
     private void loadConfig() {
-        String configPrefix = databaseInstanceName.isEmpty()
+        boolean tryBothDefaultAndMainPrefixes = databaseInstanceName.isEmpty()
+                || DEFAULT_INSTANCE_NAME.equalsIgnoreCase(databaseInstanceName);
+        String configPrefix = tryBothDefaultAndMainPrefixes
                 ? "" : databaseInstanceName + ".";
         InputStream configInputStream = null;
         try {
@@ -256,7 +259,330 @@ public class DbConfigurationReader implements Cloneable {
                 configFileName = CONFIG_FILE_NAME;
                 configInputStream =
                         new FileInputStream(dbConfigurationFilePath);
+                /*// gets the file relative to execution classpath
+                InputStream configInputStream =
+                        Thread.currentThread().getContextClassLoader()
+                        .getResourceAsStream(CONFIG_FILE_NAME);
+                if (configInputStream == null)
+                    throw new FileNotFoundException(
+                            DB_CONFIGURATION_FILE_NOT_FOUND_MESSAGE);*/
                 config.load(configInputStream);
+                if (tryBothDefaultAndMainPrefixes)
+                    targetDbms = DbmsType.fromName(
+                            config.getProperty(TARGET_DBMS_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                            + "." + HOST_KEY)));
+                else
+                    targetDbms = DbmsType.fromName(
+                            config.getProperty(configPrefix + TARGET_DBMS_KEY));
+                if (tryBothDefaultAndMainPrefixes)
+                    host = config.getProperty(HOST_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + HOST_KEY));
+                else
+                    host = config.getProperty(configPrefix + HOST_KEY);
+                if (host == null)
+                    throw new InvalidConfigurationException(String.format(
+                            DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                            configPrefix + HOST_KEY));
+                if (host.isEmpty())
+                    throw new InvalidConfigurationException(String.format(
+                            DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                            configPrefix + HOST_KEY, host));
+                if (tryBothDefaultAndMainPrefixes)
+                    port = config.getProperty(PORT_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + PORT_KEY));
+                else
+                    port = config.getProperty(configPrefix + PORT_KEY);
+                // For SQL Server the port can be default and not specified
+                if (SQLSERVER != targetDbms) {
+                    if (port == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                configPrefix + PORT_KEY));
+                    if (port.isEmpty() || !port.matches(INTEGER_NUMBER_REGEXP))
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                configPrefix + PORT_KEY, port));
+                }
+                if (tryBothDefaultAndMainPrefixes)
+                    sid = config.getProperty(SID_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + SID_KEY));
+                else
+                    sid = config.getProperty(configPrefix + SID_KEY);
+                // SID is mandatory just for Oracle database
+                if (ORACLE == targetDbms) {
+                    if (sid == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                configPrefix + SID_KEY));
+                    if (sid.isEmpty())
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                configPrefix + SID_KEY, sid));
+                }
+                if (tryBothDefaultAndMainPrefixes)
+                    databaseName = config.getProperty(DATABASE_NAME_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + DATABASE_NAME_KEY));
+                else
+                    databaseName = config.getProperty(
+                            configPrefix + DATABASE_NAME_KEY);
+                String encryptedUsername;
+                if (tryBothDefaultAndMainPrefixes)
+                    encryptedUsername = config.getProperty(USERNAME_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + USERNAME_KEY));
+                else
+                    encryptedUsername =
+                            config.getProperty(configPrefix + USERNAME_KEY);
+                // For SQL Server integrated security is an option (no username)
+                if (ORACLE == targetDbms) {
+                    if (encryptedUsername == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                configPrefix + USERNAME_KEY));
+                    if (encryptedUsername.isEmpty()
+                        /*|| encryptedUsername.length() % 8 != 0*/)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                configPrefix + USERNAME_KEY,
+                                encryptedUsername));
+                }
+                if (encryptedUsername != null)
+                    username = decryptCredentialAllParamsPredefined(
+                            encryptedUsername);
+                String encryptedPassword;
+                if (tryBothDefaultAndMainPrefixes)
+                    encryptedPassword = config.getProperty(PASSWORD_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + PASSWORD_KEY));
+                else
+                    encryptedPassword =
+                            config.getProperty(configPrefix + PASSWORD_KEY);
+                if (ORACLE == targetDbms) {
+                    if (encryptedPassword == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                configPrefix + PASSWORD_KEY));
+                    if (encryptedPassword.isEmpty()
+                        /*|| encryptedPassword.length() % 8 != 0*/)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                configPrefix + PASSWORD_KEY,
+                                encryptedPassword));
+                }
+                if (encryptedPassword != null)
+                    password = decryptCredentialAllParamsPredefined(
+                            encryptedPassword);
+                if (tryBothDefaultAndMainPrefixes)
+                    minPoolSize = Integer.parseInt(
+                            config.getProperty(MIN_POOL_SIZE_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                                    + "." + MIN_POOL_SIZE_KEY,
+                                            "" + NOT_PRESENT_CONFIG_VALUE)));
+                else
+                    minPoolSize = Integer.parseInt(config.getProperty(
+                            configPrefix + MIN_POOL_SIZE_KEY,
+                            "" + NOT_PRESENT_CONFIG_VALUE));
+                if (tryBothDefaultAndMainPrefixes)
+                    maxPoolSize = Integer.parseInt(
+                            config.getProperty(MAX_POOL_SIZE_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                                    + "." + MAX_POOL_SIZE_KEY,
+                                            "" + NOT_PRESENT_CONFIG_VALUE)));
+                else
+                    maxPoolSize = Integer.parseInt(config.getProperty(
+                            configPrefix + MAX_POOL_SIZE_KEY,
+                            "" + NOT_PRESENT_CONFIG_VALUE));
+                if (tryBothDefaultAndMainPrefixes)
+                    queryExecutionTimeout = (int) (Double.parseDouble(
+                            config.getProperty(QUERY_EXECUTION_TIMEOUT_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                                    + "." + QUERY_EXECUTION_TIMEOUT_KEY,
+                                            "" + NOT_PRESENT_CONFIG_VALUE)))
+                            * 1000);
+                else
+                    queryExecutionTimeout = (int) (Double.parseDouble(
+                            config.getProperty(
+                                    configPrefix + QUERY_EXECUTION_TIMEOUT_KEY,
+                                    "" + NOT_PRESENT_CONFIG_VALUE)) * 1000);
+                if (tryBothDefaultAndMainPrefixes)
+                    connectionWaitTimeout = (int) (Double.parseDouble(
+                            config.getProperty(CONNECTION_WAIT_TIMEOUT_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                                    + "." + CONNECTION_WAIT_TIMEOUT_KEY,
+                                            "" + NOT_PRESENT_CONFIG_VALUE)))
+                            * 1000);
+                else
+                    connectionWaitTimeout = (int) (Double.parseDouble(
+                            config.getProperty(
+                                    configPrefix + CONNECTION_WAIT_TIMEOUT_KEY,
+                                    "" + NOT_PRESENT_CONFIG_VALUE)) * 1000);
+                if (tryBothDefaultAndMainPrefixes)
+                    reconnectTimeout = (int) (Double.parseDouble(
+                            config.getProperty(RECONNECT_TIMEOUT_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                                    + "." + RECONNECT_TIMEOUT_KEY,
+                                            "" + NOT_PRESENT_CONFIG_VALUE)))
+                            * 1000);
+                else
+                    reconnectTimeout = (int) (Double.parseDouble(
+                            config.getProperty(
+                                    configPrefix + RECONNECT_TIMEOUT_KEY,
+                                    "" + NOT_PRESENT_CONFIG_VALUE)) * 1000);
+                if (tryBothDefaultAndMainPrefixes)
+                    inactiveConnectionTimeout = (int) (Double.parseDouble(
+                            config.getProperty(INACTIVE_CONNECTION_TIMEOUT_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                                    + "." + INACTIVE_CONNECTION_TIMEOUT_KEY,
+                                            "" + NOT_PRESENT_CONFIG_VALUE)))
+                            * 1000);
+                else
+                    inactiveConnectionTimeout = (int) (Double.parseDouble(
+                            config.getProperty(configPrefix
+                                            + INACTIVE_CONNECTION_TIMEOUT_KEY,
+                                    "" + NOT_PRESENT_CONFIG_VALUE)) * 1000);
+                if (tryBothDefaultAndMainPrefixes)
+                    timeoutCheckInterval = (int) (Double.parseDouble(
+                            config.getProperty(TIMEOUT_CHECK_INTERVAL_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                                    + "." + TIMEOUT_CHECK_INTERVAL_KEY,
+                                            "" + NOT_PRESENT_CONFIG_VALUE)))
+                            * 1000);
+                else
+                    timeoutCheckInterval = (int) (Double.parseDouble(
+                            config.getProperty(
+                                    configPrefix + TIMEOUT_CHECK_INTERVAL_KEY,
+                                    "" + NOT_PRESENT_CONFIG_VALUE)) * 1000);
+                if (tryBothDefaultAndMainPrefixes)
+                    validationOnBorrow = Boolean.parseBoolean(
+                            config.getProperty(VALIDATION_ON_BORROW_KEY,
+                                    config.getProperty(DEFAULT_INSTANCE_NAME
+                                                    + "." + VALIDATION_ON_BORROW_KEY,
+                                            "false")));
+                else
+                    validationOnBorrow = Boolean.parseBoolean(
+                            config.getProperty(
+                                    configPrefix + VALIDATION_ON_BORROW_KEY,
+                                    "false"));
+                if (tryBothDefaultAndMainPrefixes)
+                    dbPoolName = config.getProperty(POOL_NAME_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                            + "." + POOL_NAME_KEY,
+                                    databaseInstanceName + "-connection-pool"));
+                else
+                    dbPoolName = config.getProperty(
+                            configPrefix + POOL_NAME_KEY,
+                            databaseInstanceName + "-connection-pool");
+                if (tryBothDefaultAndMainPrefixes)
+                    loggingLevel = config.getProperty(LOGGING_LEVEL_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + LOGGING_LEVEL_KEY, "INFO"));
+                else
+                    loggingLevel = config.getProperty(
+                            configPrefix + LOGGING_LEVEL_KEY, "INFO");
+                if (tryBothDefaultAndMainPrefixes)
+                    persistenceProvider = config.getProperty(
+                            PERSISTENCE_PROVIDER_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                            + "." + PERSISTENCE_PROVIDER_KEY,
+                                    "eclipselink"));
+                else
+                    persistenceProvider = config.getProperty(
+                            configPrefix + PERSISTENCE_PROVIDER_KEY,
+                            "eclipselink");
+            } else {
+                String legacyDbConfigurationFilePath =
+                        new File(".").getAbsolutePath() + File.separator
+                                + LEGACY_CONFIG_FILE_NAME;
+                if (new File(legacyDbConfigurationFilePath).exists()) {
+                    configFileName = LEGACY_CONFIG_FILE_NAME;
+                    configInputStream =
+                            new FileInputStream(legacyDbConfigurationFilePath);
+                    config.load(configInputStream);
+                    host = config.getProperty("HostName");
+                    if (host == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                "HostName"));
+                    if (host.isEmpty())
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                "HostName", host));
+                    port = config.getProperty("OraclePort", "1521");
+                    if (port == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                "OraclePort"));
+                    if (port.isEmpty() || !port.matches(INTEGER_NUMBER_REGEXP))
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                "OraclePort", port));
+                    sid = config.getProperty("SID");
+                    if (sid != null && sid.startsWith(":"))
+                        sid = sid.substring(1);
+                    if (sid == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                "SID"));
+                    if (sid.isEmpty())
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                "SID", sid));
+                    this.databaseName = config.getProperty(DATABASE_NAME_KEY);
+                    String encryptedUsername = config.getProperty("UserName");
+                    if (encryptedUsername == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                "UserName"));
+                    if (encryptedUsername.isEmpty()
+                        /*|| encryptedUsername.length() % 8 != 0*/)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                "UserName", encryptedUsername));
+                    username = CryptoUtil.DecryptUserPass(encryptedUsername);
+                    String encryptedPassword = config.getProperty("Password");
+                    if (encryptedPassword == null)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_MISSING_MESSAGE,
+                                "Password"));
+                    if (encryptedPassword.isEmpty()
+                        /*|| encryptedPassword.length() % 8 != 0*/)
+                        throw new InvalidConfigurationException(String.format(
+                                DB_CONFIG_PROPERTY_INVALID_MESSAGE,
+                                "Password", encryptedPassword));
+                    password = CryptoUtil.DecryptUserPass(encryptedPassword);
+                    minPoolSize = Integer.valueOf(
+                            config.getProperty("PoolSize"));
+                    maxPoolSize = Integer.valueOf(
+                            config.getProperty("MaxPoolSize"));
+                    reconnectTimeout = Integer.valueOf(
+                            config.getProperty("waitForReconnect", "1")) * 1000;
+                    dbPoolName = config.getProperty("PoolName");
+                } else {
+                    throw new FileNotFoundException(String.format(
+                            DB_CONFIGURATION_FILE_NOT_FOUND_MESSAGE,
+                            dbConfigurationFilePath));
+                }
+            }
+            // Default dbms is Oracle
+            if (ORACLE == targetDbms) {
+                jdbcUrl = "jdbc:oracle:thin:@" + host + ":" + port + "/" + sid;
+                jdbcDriver = "oracle.jdbc.pool.OracleDataSource";
+                // jdbcDriver = "oracle.jdbc.OracleDriver"
+            } else if (SQLSERVER == targetDbms) {
+                jdbcUrl = "jdbc:sqlserver://" + host;
+                if (sid != null && !sid.isEmpty())
+                    jdbcUrl += "\\" + sid;
+                if (port != null && !port.isEmpty())
+                    jdbcUrl += ":" + port;
+                if (databaseName != null && !databaseName.isEmpty())
+                    jdbcUrl += ";databaseName=" + databaseName;
+                jdbcDriver =
+                        "com.microsoft.sqlserver.jdbc.SQLServerDataSource";
             }
         } catch (Exception e) {
             if (!(e instanceof InvalidConfigurationException))

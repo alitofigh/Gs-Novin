@@ -1,6 +1,5 @@
 package org.gsstation.novin.core.dao;
 
-import org.eclipse.persistence.config.SessionCustomizer;
 import org.gsstation.novin.core.common.system.GsMain;
 import org.gsstation.novin.core.exception.GeneralDatabaseException;
 import org.gsstation.novin.core.exception.GsRuntimeException;
@@ -9,6 +8,7 @@ import org.gsstation.novin.core.logging.GsLogEvent;
 import org.gsstation.novin.core.logging.GsLogger;
 import org.gsstation.novin.core.logging.MainLogger;
 
+import org.eclipse.persistence.config.SessionCustomizer;
 import org.eclipse.persistence.internal.jpa.EntityManagerFactoryImpl;
 import org.eclipse.persistence.sessions.DatabaseLogin;
 import org.eclipse.persistence.sessions.Session;

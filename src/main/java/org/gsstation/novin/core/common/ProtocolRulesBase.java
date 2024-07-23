@@ -24,4 +24,6 @@ public abstract class ProtocolRulesBase {
     public static final String MAIN_LOGGER_QBEAN_NAME = "main-logger";
     public static final String MAIN_LOGGER_QBEAN_LEGACY_NAME = "Q2";
     public static final String STANDARD_TIME_FORMAT = "HH:mm:ss.SSS";
+    public static final String INTEGER_NUMBER_REGEXP =
+            "[0-9]+";
 }
