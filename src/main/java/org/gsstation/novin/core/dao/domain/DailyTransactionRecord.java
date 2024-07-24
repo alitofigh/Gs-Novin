@@ -9,11 +9,11 @@ import java.util.Date;
 
 @Data
 @Entity
-@Table(name = "daily_transaction_record")
+@Table(name = "DAILY_TRANSACTION_RECORD")
 public class DailyTransactionRecord {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "gs_id")
@@ -44,28 +44,28 @@ public class DailyTransactionRecord {
     private String userCardId;
     @Column(name = "fuel_sam_id")
     private String fuelSamId;
-    @Column(name = "total_amount")
-    private BigDecimal totalAmount;
-    @Column(name = "N")
-    private BigDecimal n;
+    @Column(name = "total_amount", precision = 20, scale = 4)
+    private Double totalAmount;
+    @Column(name = "N", precision = 20, scale = 4)
+    private Double n;
     @Column(name = "fuel_status")
     private String fuelStatus;
-    @Column(name = "X")
-    private BigDecimal x;
-    @Column(name = "X1")
-    private BigDecimal x1;
-    @Column(name = "X2")
-    private BigDecimal x2;
-    @Column(name = "X3")
-    private BigDecimal x3;
-    @Column(name = "R")
-    private BigDecimal r;
-    @Column(name = "R1")
-    private BigDecimal r1;
-    @Column(name = "R2")
-    private BigDecimal r2;
-    @Column(name = "R3")
-    private BigDecimal r3;
+    @Column(name = "X", precision = 20, scale = 4)
+    private Double x;
+    @Column(name = "X1", precision = 20, scale = 4)
+    private Double x1;
+    @Column(name = "X2", precision = 20, scale = 4)
+    private Double x2;
+    @Column(name = "X3", precision = 20, scale = 4)
+    private Double x3;
+    @Column(name = "R", precision = 20, scale = 4)
+    private Double r;
+    @Column(name = "R1", precision = 20, scale = 4)
+    private Double r1;
+    @Column(name = "R2", precision = 20, scale = 4)
+    private Double r2;
+    @Column(name = "R3", precision = 20, scale = 4)
+    private Double r3;
     @Column(name = "FTC")
     private Integer FTC;
     @Column(name = "payment_sam_id")

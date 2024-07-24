@@ -6,5 +6,22 @@
     <persistence-unit name="main-persistence-unit" transaction-type="RESOURCE_LOCAL">
         <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
         <class>org.gsstation.novin.core.dao.domain.DailyTransactionRecord</class>
+
+        <properties>
+            <property name="javax.persistence.jdbc.driver" value="com.mysql.jdbc.Driver" />
+            <property name="javax.persistence.jdbc.url" value="jdbc:mysql://192.168.163.8:3306/gsstation" />
+            <property name="javax.persistence.jdbc.user" value="gsUser" />
+            <property name="javax.persistence.jdbc.password" value="gs123456" />
+
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect" />
+            <property name="hibernate.show_sql" value="true" />
+            <property name="hibernate.hbm2ddl.auto" value="create" />
+            <property name="eclipselink.target-database" value="mysql" />
+            <property name="eclipselink.connection-pool.default.initial" value="1"/>
+            <property name="eclipselink.connection-pool.default.min" value="5"/>
+            <property name="eclipselink.connection-pool.default.max" value="10"/>
+        </properties>
     </persistence-unit>
+
+
 </persistence>

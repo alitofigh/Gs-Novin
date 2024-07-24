@@ -223,11 +223,9 @@ public class EntityManagerFactory {
                                 "" + socketReadTimeout);
                         break;
                     case MYSQL:
-                        configuration.put("eclipselink.jdbc.property."
-                                        + "connectTimeout",
+                        configuration.put("eclipselink.jdbc.property.connectTimeout",
                                 "" + socketConnectTimeout);
-                        configuration.put("eclipselink.jdbc.property."
-                                        + "socketTimeout",
+                        configuration.put("eclipselink.jdbc.property.socketTimeout",
                                 "" + socketReadTimeout);
                         break;
                 }

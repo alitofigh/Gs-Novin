@@ -2,7 +2,7 @@
         logger="main-logger">
     <property name="space" value="tspace:default"/>
     <property name="queue" value="transaction-manager-queue"/>
-    <property name="sessions" value="10"/>
+    <property name="sessions" value="50"/>
     <property name="debug" value="true"/>
 
     <participant class="org.gsstation.novin.core.participants.TransactionGroupSelector"

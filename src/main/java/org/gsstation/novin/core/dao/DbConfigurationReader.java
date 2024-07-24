@@ -14,8 +14,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 import static org.gsstation.novin.core.common.ProtocolRulesBase.INTEGER_NUMBER_REGEXP;
-import static org.gsstation.novin.core.dao.DbmsType.ORACLE;
-import static org.gsstation.novin.core.dao.DbmsType.SQLSERVER;
+import static org.gsstation.novin.core.dao.DbmsType.*;
 import static org.gsstation.novin.util.security.SecurityUtil.decryptCredentialAllParamsPredefined;
 
 /**
@@ -102,9 +101,9 @@ public class DbConfigurationReader implements Cloneable {
     private String username;
     @Getter
     private String password;
-    private int minPoolSizeJpa;
+    private int minPoolSizeJpa = -1;
     private int minPoolSizeJdbc;
-    private int maxPoolSizeJpa;
+    private int maxPoolSizeJpa = -1;
     private int maxPoolSizeJdbc;
     private int minPoolSize;
     private int maxPoolSize;
@@ -583,6 +582,13 @@ public class DbConfigurationReader implements Cloneable {
                     jdbcUrl += ";databaseName=" + databaseName;
                 jdbcDriver =
                         "com.microsoft.sqlserver.jdbc.SQLServerDataSource";
+            } else if (MYSQL == targetDbms) {
+                jdbcDriver = "com.mysql.cj.jdbc.Driver";
+                jdbcUrl = "jdbc:mysql://" + host;
+                if (port != null && !port.isEmpty())
+                    jdbcUrl += ":" + port;
+                if (databaseName != null && !databaseName.isEmpty())
+                    jdbcUrl += "/" + databaseName;
             }
         } catch (Exception e) {
             if (!(e instanceof InvalidConfigurationException))

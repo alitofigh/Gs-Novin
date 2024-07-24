@@ -20,6 +20,6 @@ public class StoreValidation extends BaseParticipant {
         MainLogger.log("message received here -" + isoMessage.getString(3));
         DailyTransactionRecordDao dao = new DailyTransactionRecordDao("");
         dao.store(convertIso(isoMessage));
-        System.out.println("done store ");
+        MainLogger.log("done store ");
     }
 }
