@@ -6,6 +6,9 @@ import javax.persistence.EntityManager;
 import javax.persistence.FlushModeType;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Created by A_Tofigh at 07/22/2024
@@ -36,6 +39,33 @@ public abstract class JpaBaseDao<T> extends BaseDao<T> {
                 entityManager.close();
         }
     }
+
+    /*public <T extends MyClass> Collection<T> bulkSave(Collection<T> entities) {
+        final List<T> savedEntities = new ArrayList<T>(entities.size());
+        int i = 0;
+        for (T t : entities) {
+            savedEntities.add(persistOrMerge(t));
+            i++;
+            if (i % batchSize == 0) {
+                // Flush a batch of inserts and release memory.
+                entityManager.flush();
+                entityManager.clear();
+            }
+        }
+        // Flush one last time to catch those beyond that last full batch.
+        entityManager.flush();
+        entityManager.clear();
+        return savedEntities;
+    }
+
+    private <T extends MyClass> T persistOrMerge(T t) {
+        if (t.getId() == null) {
+            entityManager.persist(t);
+            return t;
+        } else {
+            return entityManager.merge(t);
+        }
+    }*/
 
     public int update(T entity) throws GeneralDatabaseException {
         EntityManager entityManager = null;

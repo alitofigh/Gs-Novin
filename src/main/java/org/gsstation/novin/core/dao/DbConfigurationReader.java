@@ -82,7 +82,6 @@ public class DbConfigurationReader implements Cloneable {
             databaseConfigurationReaders = new HashMap<>();
     private static Map<String, List<ConfigurationUpdateListener<DbConfigurationReader>>>
             configurationUpdateListeners = new HashMap<>();
-    private static ConfigurationUpdateListener<Path> dbConfigFileChangeListener;
 
     private String databaseInstanceName;
     @Getter
@@ -135,7 +134,6 @@ public class DbConfigurationReader implements Cloneable {
         this.databaseInstanceName = databaseInstanceName;
         try {
             loadConfig();
-            //observeDatabaseConfigurationFile();
         } catch (Exception e) {
             if (e instanceof InvalidConfigurationException)
                 throw (InvalidConfigurationException) e;
@@ -164,82 +162,6 @@ public class DbConfigurationReader implements Cloneable {
             databaseConfigurationReaders.put(databaseInstanceName, instance);
         }
         return instance;
-    }
-
-    private void observeDatabaseConfigurationFile() throws IOException {
-        if (dbConfigFileChangeListener != null)
-            return;
-        final Path configFilePath = Paths.get(configFileName).toAbsolutePath();
-        dbConfigFileChangeListener = context -> {
-            StringBuilder activitiesBuilder = new StringBuilder();
-            try {
-                @SuppressWarnings("UnnecessaryLocalVariable")
-                Path path = context;
-                if (!configFilePath.equals(path)) {
-                    activitiesBuilder
-                            .append("Irrelevant change to database ")
-                            .append("configuration, ignored OS file ")
-                            .append("system notification of change");
-                    return;
-                }
-                for (Map.Entry<String, List<ConfigurationUpdateListener
-                        <DbConfigurationReader>>> listener
-                        : configurationUpdateListeners.entrySet()) {
-                    if (activitiesBuilder.length() > 0)
-                        activitiesBuilder.append("\n");
-                    activitiesBuilder
-                            .append("'").append(listener.getKey())
-                            .append("' database configuration ")
-                            .append("possible change detected...");
-                    DbConfigurationReader currentConfigData =
-                            DbConfigurationReader
-                                    .getInstance(listener.getKey());
-                    DbConfigurationReader oldConfigData =
-                            (DbConfigurationReader)
-                                    currentConfigData.clone();
-                    currentConfigData.loadConfig();
-                    activitiesBuilder.append("\nUpdated '")
-                            .append(listener.getKey())
-                            .append("' database configuration");
-                    if (currentConfigData.equals(oldConfigData)) {
-                        activitiesBuilder
-                                .append("\nSame configuration ")
-                                .append("values as before for '")
-                                .append(listener.getKey())
-                                .append("' database, ignored notification");
-                        continue;
-                    }
-                    for (ConfigurationUpdateListener
-                            <DbConfigurationReader> cul
-                            : listener.getValue()) {
-                        activitiesBuilder
-                                .append("\nNotifying dependent module of '")
-                                .append(listener.getKey())
-                                .append("' database configuration ")
-                                .append("changes; dependent module: ")
-                                .append(cul);
-                        // Log activities thus far before other
-                        // module's log for better clarity of log
-                        MainLogger.log(
-                                activitiesBuilder.toString(), THIS_CLASS_NAME);
-                        activitiesBuilder = new StringBuilder();
-                        try {
-                            cul.configurationUpdated(oldConfigData);
-                        } catch (Exception e) {
-                            GsLogger.log(e, THIS_CLASS_NAME);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                GsLogger.log(e, THIS_CLASS_NAME);
-            } finally {
-                if (activitiesBuilder.length() > 0)
-                    MainLogger.log(
-                            activitiesBuilder.toString(), THIS_CLASS_NAME);
-            }
-        };
-        DeploymentUpdateNotifier.getInstance().watch(CONFIG_FILE_NAME,
-                dbConfigFileChangeListener);
     }
 
     private void loadConfig() {
@@ -294,6 +216,22 @@ public class DbConfigurationReader implements Cloneable {
                                     + "." + PORT_KEY));
                 else
                     port = config.getProperty(configPrefix + PORT_KEY);
+                String encryptedUsername;
+                if (tryBothDefaultAndMainPrefixes)
+                    encryptedUsername = config.getProperty(USERNAME_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + USERNAME_KEY));
+                else
+                    encryptedUsername =
+                            config.getProperty(configPrefix + USERNAME_KEY);
+                String encryptedPassword;
+                if (tryBothDefaultAndMainPrefixes)
+                    encryptedPassword = config.getProperty(PASSWORD_KEY,
+                            config.getProperty(DEFAULT_INSTANCE_NAME
+                                    + "." + PASSWORD_KEY));
+                else
+                    encryptedPassword =
+                            config.getProperty(configPrefix + PASSWORD_KEY);
                 // For SQL Server the port can be default and not specified
                 if (SQLSERVER != targetDbms) {
                     if (port == null)
@@ -329,14 +267,7 @@ public class DbConfigurationReader implements Cloneable {
                 else
                     databaseName = config.getProperty(
                             configPrefix + DATABASE_NAME_KEY);
-                String encryptedUsername;
-                if (tryBothDefaultAndMainPrefixes)
-                    encryptedUsername = config.getProperty(USERNAME_KEY,
-                            config.getProperty(DEFAULT_INSTANCE_NAME
-                                    + "." + USERNAME_KEY));
-                else
-                    encryptedUsername =
-                            config.getProperty(configPrefix + USERNAME_KEY);
+
                 // For SQL Server integrated security is an option (no username)
                 if (ORACLE == targetDbms) {
                     if (encryptedUsername == null)
@@ -353,14 +284,7 @@ public class DbConfigurationReader implements Cloneable {
                 if (encryptedUsername != null)
                     username = decryptCredentialAllParamsPredefined(
                             encryptedUsername);
-                String encryptedPassword;
-                if (tryBothDefaultAndMainPrefixes)
-                    encryptedPassword = config.getProperty(PASSWORD_KEY,
-                            config.getProperty(DEFAULT_INSTANCE_NAME
-                                    + "." + PASSWORD_KEY));
-                else
-                    encryptedPassword =
-                            config.getProperty(configPrefix + PASSWORD_KEY);
+
                 if (ORACLE == targetDbms) {
                     if (encryptedPassword == null)
                         throw new InvalidConfigurationException(String.format(
@@ -602,16 +526,6 @@ public class DbConfigurationReader implements Cloneable {
             }
         }
         }
-
-    public void addConfigurationUpdateListener(
-            ConfigurationUpdateListener<DbConfigurationReader> listener) {
-        configurationUpdateListeners.putIfAbsent(
-                databaseInstanceName, new ArrayList<>());
-        if (!configurationUpdateListeners
-                .get(databaseInstanceName).contains(listener))
-            configurationUpdateListeners
-                    .get(databaseInstanceName).add(listener);
-    }
 
     @SuppressWarnings("unused")
     public void removeConfigurationUpdateListener(

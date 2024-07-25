@@ -6,6 +6,7 @@
     <persistence-unit name="main-persistence-unit" transaction-type="RESOURCE_LOCAL">
         <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
         <class>org.gsstation.novin.core.dao.domain.DailyTransactionRecord</class>
+        <class>org.gsstation.novin.core.dao.domain.TransactionRecord</class>
 
         <properties>
             <property name="javax.persistence.jdbc.driver" value="com.mysql.jdbc.Driver" />
