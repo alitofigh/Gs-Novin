@@ -24,8 +24,8 @@ public class StoreValidation extends BaseParticipant {
         MainLogger.log("message received here -" + isoMessage.getString(3));
         DailyTransactionRecordDao dao = new DailyTransactionRecordDao("");
         BaseEntityTrx entity = convertIso(isoMessage, DAILY_TRANSACTION_RECORD);
-       // dao.store(entity);
-       // MainLogger.log("done store 1");
+        dao.store(entity);
+        MainLogger.log("done store 1");
         entity = convertIso(isoMessage, TRANSACTION_RECORD);
         dao.store(entity);
         MainLogger.log("done store 2");

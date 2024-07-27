@@ -15,6 +15,9 @@ import org.eclipse.persistence.sessions.Session;
 import org.eclipse.persistence.sessions.server.ConnectionPool;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
+import java.sql.Driver;
+import java.sql.DriverManager;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -61,6 +64,11 @@ public class EntityManagerFactory {
                             + (System.currentTimeMillis() - startTimestamp)
                             + "'ms");
             MainLogger.log(logEvent);
+            Enumeration<Driver> driverList = DriverManager.getDrivers();
+            while (driverList.hasMoreElements()) {
+                Driver driverClass = (Driver) driverList.nextElement();
+                System.out.println("   "+driverClass.getClass().getName());
+            }
         }
     }
 

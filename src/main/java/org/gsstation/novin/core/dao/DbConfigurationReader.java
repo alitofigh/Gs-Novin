@@ -507,7 +507,7 @@ public class DbConfigurationReader implements Cloneable {
                 jdbcDriver =
                         "com.microsoft.sqlserver.jdbc.SQLServerDataSource";
             } else if (MYSQL == targetDbms) {
-                jdbcDriver = "com.mysql.cj.jdbc.Driver";
+                jdbcDriver = "com.mysql.jdbc.Driver";
                 jdbcUrl = "jdbc:mysql://" + host;
                 if (port != null && !port.isEmpty())
                     jdbcUrl += ":" + port;
