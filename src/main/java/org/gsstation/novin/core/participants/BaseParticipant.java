@@ -2,8 +2,12 @@ package org.gsstation.novin.core.participants;
 
 import lombok.SneakyThrows;
 import org.gsstation.novin.core.common.Constants;
+import org.gsstation.novin.core.common.ResponseCode;
 import org.gsstation.novin.core.dao.domain.*;
+import org.gsstation.novin.core.exception.TransactionProcessingTimeoutException;
+import org.gsstation.novin.core.logging.GsLogger;
 import org.gsstation.novin.core.logging.MainLogger;
+import org.gsstation.novin.util.configuration.EasyConfiguration;
 import org.jdom2.Element;
 import org.jpos.core.Configurable;
 import org.jpos.core.Configuration;
@@ -14,13 +18,22 @@ import org.jpos.space.Space;
 import org.jpos.space.SpaceFactory;
 import org.jpos.transaction.Context;
 import org.jpos.transaction.TransactionParticipant;
+import org.jpos.util.NameRegistrar;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
+import static org.gsstation.novin.core.common.Constants.RESPONSE_CODE_KEY;
+import static org.gsstation.novin.core.common.ProtocolRulesBase.*;
+import static org.gsstation.novin.core.common.ResponseCodeV87.DUPLICATE_TRANSACTION;
 import static org.gsstation.novin.core.dao.domain.EntityTypes.DAILY_TRANSACTION_RECORD;
 import static org.gsstation.novin.core.dao.domain.EntityTypes.TRANSACTION_RECORD;
+import static org.gsstation.novin.core.exception.TransactionProcessingTimeoutException.TRANSACTION_PROCESSING_TIMEOUT_MESSAGE;
 
 /**
  * Created by A_Tofigh at 07/18/2024
@@ -28,90 +41,139 @@ import static org.gsstation.novin.core.dao.domain.EntityTypes.TRANSACTION_RECORD
 public abstract class BaseParticipant
         implements TransactionParticipant, Configurable, XmlConfigurable {
 
+    private static final String THIS_CLASS_NAME = "base-participant";
+    protected static final String PARTICIPANT_CHAIN_EXECUTION_STATE =
+            "participant-chain-execution-state";
+    protected static final String PARTICIPANT_START_TIMESTAMP =
+            "participant-start-timestamp";
+    protected static final String PARTICIPANT_END_TIMESTAMP =
+            "participant-end-timestamp";
+
     protected Space interconnectSpace;
     protected Configuration configuration;
+    protected EasyConfiguration easyConfig;
+    protected int responseTimeout;
+    protected int inSpaceTimeout;
+    /**
+     * NB The instance variables below are not thread-safe regarding jPOS
+     * participants design (singleton), so protect them against concurrency
+     * in case anyone is not itself thread-safe (like the case for jPOS context)
+     */
+    protected static final ThreadLocal<Context>
+            threadOwnTransactionContext = new ThreadLocal<>();
 
-    public abstract void doCommit(Context ctx);
+    public abstract void doCommit(Context context) throws Exception;
 
     @Override
-    public void commit(long id, Serializable context) {
-        if (checkPreviousResult(context))
-            doCommit((Context) context);
-        else {
-            MainLogger.log("previousResult was not successful.");
+    public int prepare(long id, Serializable context) {
+        try {
+            // TODO get space-uri from config and use it to create space
+            interconnectSpace = SpaceFactory.getSpace();
+
+                responseTimeout = DEFAULT_IN_SPACE_TIMEOUT * 1000;
+                inSpaceTimeout = DEFAULT_IN_SPACE_TIMEOUT * 1000;
+
+            return PREPARED;
+        } catch (Throwable e) {
+            GsLogger.log(e, context, THIS_CLASS_NAME);
+            return RETRY;
         }
     }
 
     @Override
-    public void setConfiguration(Configuration configuration) throws ConfigurationException {
+    public void commit(long id, Serializable context) {
+        Context theContext = null;
+        try {
+            theContext = (Context) context;
+            theContext.put(
+                    PARTICIPANT_START_TIMESTAMP, System.currentTimeMillis());
+            threadOwnTransactionContext.set(theContext);
+            boolean ensureExecutingParticipant = this.getClass().getAnnotation(
+                    AlwaysExecutingParticipant.class) != null;
+            Boolean previousResultSuccessful = (Boolean)
+                    theContext.get(Constants.PREVIOUS_RESULT);
+            if (previousResultSuccessful == null)
+                previousResultSuccessful = false;
+            // Should any participant specifically been coded to behave as such,
+            // ensure it gets executed in chain
+            if (ensureExecutingParticipant) {
+                doCommit(theContext);
+                //recordParticipantExecution();
+            } else if (previousResultSuccessful) {
+                checkTransactionProcessingTimeout();
+                doCommit(theContext);
+                //recordParticipantExecution();
+            }
+        } catch (Throwable e) {
+            try {
+                GsLogger.log(e, context, THIS_CLASS_NAME);
+            } catch (Throwable e1) {
+                GsLogger.log(e1, THIS_CLASS_NAME);
+            }
+            ResponseCode responseCode = DUPLICATE_TRANSACTION;
+            propagateResult(responseCode);
+        }
+    }
+
+    @Override
+    public final void abort(long id, Serializable context) {
+
+    }
+
+    @Override
+    public void setConfiguration(Configuration configuration) {
         this.configuration = configuration;
     }
 
     @Override
-    public void setConfiguration(Element element) throws ConfigurationException {
-
+    public void setConfiguration(Element element) {
+        this.easyConfig = new EasyConfiguration(element);
     }
 
-    @Override
-    public int prepare(long l, Serializable serializable) {
-        interconnectSpace = SpaceFactory.getSpace();
-        return PREPARED;
+    public void propagateResult(ResponseCode responseCode) {
+        propagateResult(responseCode, true, null);
     }
 
-    public boolean checkPreviousResult(Serializable context) {
-        return (Boolean) ((Context) context).get(Constants.PREVIOUS_RESULT);
+    public void propagateResult(String key, Object result) {
+        // NB null response code means success
+        propagateResult(null, true, new Map.Entry[]{
+                new AbstractMap.SimpleEntry<>(key, result)});
     }
 
-    @SneakyThrows
-    protected BaseEntityTrx convertIso(ISOMsg isoMsg, EntityTypes entityType) {
-        SimpleDateFormat sourceFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        BaseEntityTrx entity = null;
-        if (entityType == DAILY_TRANSACTION_RECORD) {
-            entity = new DailyTransactionRecord();
-            ((DailyTransactionRecord)entity).setGsId(isoMsg.getString(2));
-            ((DailyTransactionRecord)entity).setPtId(isoMsg.getString(3));
-            entity.setShiftNo(isoMsg.getString(4));
-            entity.setDailyNo(isoMsg.getString(5));
-            ((DailyTransactionRecord)entity).setFuelTtc(Integer.parseInt(isoMsg.getString(6)));
-            entity.setEpurseTtc(Integer.parseInt(isoMsg.getString(7)));
-            entity.setFuelTime(sourceFormat.parse(isoMsg.getString(8)));
-            entity.setEpurseTime(sourceFormat.parse(isoMsg.getString(9)));
-            entity.setFuelType(isoMsg.getString(10));
-            entity.setTransType(isoMsg.getString(11));
-            entity.setNozzleId(isoMsg.getString(12));
-            entity.setUserCardId(isoMsg.getString(13));
-            entity.setFuelSamId(isoMsg.getString(14));
-            entity.setTotalAmount(Double.parseDouble(isoMsg.getString(15)));
-            entity.setPaymentSamId(isoMsg.getString(27));
-            entity.setP(Integer.parseInt(isoMsg.getString(33)));
-            entity.setP1(Integer.parseInt(isoMsg.getString(34)));
-            entity.setP2(Integer.parseInt(isoMsg.getString(35)));
-            entity.setP3(Integer.parseInt(isoMsg.getString(36)));
-            return entity;
-        } else if (entityType == TRANSACTION_RECORD) {
-            entity = new TransactionRecord();
-            TransactionKey transactionKey = new TransactionKey(
-                    isoMsg.getString(2),
-                    isoMsg.getString(3),
-                    Integer.parseInt(isoMsg.getString(6)));
-            ((TransactionRecord)entity).setId(transactionKey);
-            entity.setShiftNo(isoMsg.getString(4));
-            entity.setDailyNo(isoMsg.getString(5));
-            entity.setEpurseTtc(Integer.parseInt(isoMsg.getString(7)));
-            entity.setFuelTime(sourceFormat.parse(isoMsg.getString(8)));
-            entity.setEpurseTime(sourceFormat.parse(isoMsg.getString(9)));
-            entity.setFuelType(isoMsg.getString(10));
-            entity.setTransType(isoMsg.getString(11));
-            entity.setNozzleId(isoMsg.getString(12));
-            entity.setUserCardId(isoMsg.getString(13));
-            entity.setFuelSamId(isoMsg.getString(14));
-            entity.setTotalAmount(Double.parseDouble(isoMsg.getString(15)));
-            entity.setPaymentSamId(isoMsg.getString(27));
-            entity.setP(Integer.parseInt(isoMsg.getString(33)));
-            entity.setP1(Integer.parseInt(isoMsg.getString(34)));
-            entity.setP2(Integer.parseInt(isoMsg.getString(35)));
-            entity.setP3(Integer.parseInt(isoMsg.getString(36)));
+    public void propagateResult(
+            Object responseCode, boolean successResponse,
+            Map.Entry[] resultEntries) {
+        Context context = threadOwnTransactionContext.get();
+        if (responseCode != null)
+            context.put(RESPONSE_CODE_KEY, responseCode);
+        // NB! Severely prohibited to change previous result once set false
+        if ((Boolean) context.get(Constants.PREVIOUS_RESULT)) {
+            if (responseCode == null || successResponse)
+                context.put(Constants.PREVIOUS_RESULT, true);
+            else
+                context.put(Constants.PREVIOUS_RESULT, false);
         }
-        return entity;
+        if (resultEntries != null && resultEntries.length != 0)
+            for (Map.Entry result : resultEntries)
+                context.put(result.getKey(), result.getValue());
+    }
+
+    private void checkTransactionProcessingTimeout()
+            throws TransactionProcessingTimeoutException {
+        Context context = threadOwnTransactionContext.get();
+        int transactionProcessingTimeout =
+                DEFAULT_TRANSACTION_PROCESSING_TIMEOUT * 1000;
+        /*if (generalConfiguration != null) {
+            transactionProcessingTimeout = (int)
+                    (generalConfiguration.getDouble(
+                            TRANSACTION_PROCESSING_TIMEOUT_KEY,
+                            DEFAULT_TRANSACTION_PROCESSING_TIMEOUT) * 1000);
+        }*/
+        long processingTimeSoFar = System.currentTimeMillis() -
+                (Long) context.get(MESSAGE_ARRIVAL_TIMESTAMP);
+        if (processingTimeSoFar > transactionProcessingTimeout)
+            throw new TransactionProcessingTimeoutException(
+                    String.format(TRANSACTION_PROCESSING_TIMEOUT_MESSAGE,
+                            processingTimeSoFar, transactionProcessingTimeout));
     }
 }

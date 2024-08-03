@@ -1,5 +1,7 @@
 package org.gsstation.novin.core.participants;
 
+import org.gsstation.novin.core.common.ProtocolRulesBase;
+import org.gsstation.novin.core.logging.MainLogger;
 import org.gsstation.novin.core.module.ContextWrapper;
 import org.jpos.core.Configurable;
 import org.jpos.core.Configuration;
@@ -12,28 +14,29 @@ import org.jpos.transaction.GroupSelector;
 import java.io.Serializable;
 
 import static org.gsstation.novin.core.common.ProtocolRulesBase.INVALID_RESPONSE_TRANSACTION_GROUP_NAME;
+import static org.gsstation.novin.core.common.ProtocolRulesBase.extractIsoMsg;
 
 /**
  * Created by A_Tofigh at 07/18/2024
  */
 public class TransactionGroupSelector implements GroupSelector, Configurable {
+    private static final String THIS_CLASS_NAME = "transaction-group-selector";
     Configuration configuration;
 
     @Override
     public String select(long id, Serializable serializable) {
-        Context context = null;
+        Context context;
         ISOMsg isoMessage;
-        String targetTransactionGroup;
+        String targetTransactionGroup = "";
         try {
-            if (serializable instanceof Context) {
-                context = (Context) serializable;
-                isoMessage = (ISOMsg) context.get(ContextWrapper.getOriginalMessageKey());
-            } else if (serializable instanceof ISOMsg) {
-                isoMessage = (ISOMsg) serializable;
-            } else {
-                return null;
+            if (serializable == null) {
+                MainLogger.log("Received null object, cannot select any group!",
+                        THIS_CLASS_NAME);
+                return targetTransactionGroup;
             }
-            boolean isRequest = isoMessage.isIncoming();
+            context = (Context) serializable;
+            isoMessage = extractIsoMsg(context);
+
             String mti = isoMessage.getMTI();
             if ("0100".equals(mti)) {
                 targetTransactionGroup = "ips-transaction";

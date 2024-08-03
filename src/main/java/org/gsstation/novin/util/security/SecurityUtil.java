@@ -86,11 +86,11 @@ public abstract class SecurityUtil {
     public static final int DESEDE_DOUBLE_KEY_SIZE = 16;
     public static final int DESEDE_TRIPLE_KEY_SIZE = 24;
     public static final byte[] ALL_ZEROS_8_BYTE_BLOCK =
-            new byte[] { 0, 0, 0, 0, 0, 0, 0, 0 };
+            new byte[]{0, 0, 0, 0, 0, 0, 0, 0};
     public static final byte[] ALL_ZEROS_16_BYTE_BLOCK =
-            new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            new byte[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     public static final byte[] ALL_ONES_8_BYTE_BLOCK =
-            new byte[] { /*0x11*/17, 17, 17, 17, 17, 17, 17, 17 };
+            new byte[]{ /*0x11*/17, 17, 17, 17, 17, 17, 17, 17};
     public static final int PBKDF2_ITERATION_COUNT = 1000;
     public static final int PBKDF2_HASH_SIZE = 24 * 8;  // in bits
     public static final int PBKDF2_SALT_SIZE = 24;  // in bytes
@@ -291,7 +291,7 @@ public abstract class SecurityUtil {
             throws Exception {
         KeyStore keyStore;
         try (FileInputStream keyStoreInputStream =
-                new FileInputStream(storePath)) {
+                     new FileInputStream(storePath)) {
             keyStore = KeyStore.getInstance("JKS");
             keyStore.load(keyStoreInputStream, password);
         }
@@ -421,16 +421,45 @@ public abstract class SecurityUtil {
         return keyStore.getCertificate(keyAlias);
     }
 
-    /*public static byte[] makeHmac(byte[] data, byte[] keyBytes)
-            throws Exception {
-        SecretKeyFactory secretKeyFactory =
-                SecretKeyFactory.getInstance("HmacSHA1");
-        SecretKey secretKey = secretKeyFactory.generateSecret
-                (new HmacSHA1());
-        Mac mac = Mac.getInstance("HmacSHA1");
-        mac.init(secretKeyFactory.generateSecret(secretKey));
-        return mac.doFinal(data);
-    }*/
+    public static byte[] computeGsMessageMac(ISOMsg message, String key) throws Exception {
+        message.set(64, ALL_ZEROS_16_BYTE_BLOCK);
+        byte[] messageDump = message.pack();
+        return computeGsMessageMac(messageDump, key.getBytes());
+    }
+
+    public static byte[] computeGsMessageMac(
+            byte[] messageDump, byte[] keyBytes) throws Exception {
+        byte[] key1 = Arrays.copyOfRange(keyBytes, 0, 16);
+        byte[] key2 = Arrays.copyOfRange(keyBytes, 16, 32);
+        byte[] key3 = Arrays.copyOfRange(keyBytes, 32, 48);
+        byte[] paddedDump = padIso9797Gs(messageDump, 0, messageDump.length - 16);
+        byte[] encryptedMessageDump =
+                encrypt(paddedDump, 0, paddedDump.length, key1,
+                        AES_CBC_NO_PADDING_SPEC, null);
+        byte[] macBytes = new byte[16];
+        System.arraycopy(encryptedMessageDump,
+                encryptedMessageDump.length - 16, macBytes, 0, 16);
+        macBytes =
+                decrypt(macBytes, key2, AES_CBC_NO_PADDING_SPEC, null);
+        macBytes =
+                encrypt(macBytes, key3, AES_CBC_NO_PADDING_SPEC, null);
+        return macBytes;
+
+    }
+
+    public static byte[] padIso9797Gs(
+            byte[] sourceBytes, int offset, int length) {
+        int paddingLength = 16 - (length % 16 == 0 ? 16 : length % 16);
+        byte[] zeroPaddedDump = Arrays.copyOfRange(
+                sourceBytes, offset, length + paddingLength);
+        // gotcha, last array elements (paddingLength) must be 0 which
+        // currently have rawBytes values or you could originally create
+        // a new array with appropriate length and use System.arraycopy()
+        for (int i = zeroPaddedDump.length;
+             i > zeroPaddedDump.length - paddingLength; i--)
+            zeroPaddedDump[i - 1] = 0;
+        return zeroPaddedDump;
+    }
 
     public static byte[] computeAnsiX99Mac(
             byte[] messageDump, int offset, int length, byte[] keyBytes)
@@ -479,149 +508,6 @@ public abstract class SecurityUtil {
         int messageMacLength = getMacLength(isoMessage);
         return computeAnsiX919Mac(messageDump, 0,
                 messageDump.length - messageMacLength, keyBytes);
-    }
-
-    public static String decryptAnsiX98PinBlockHex(
-            byte[] pinBlock, String pan, byte[] key, String algorithmSpec)
-            throws Exception {
-        byte[] decryptedPinBytes =
-                decrypt(pinBlock, key, algorithmSpec, null);
-        return extractAnsiX98PinFromBytes(decryptedPinBytes, pan);
-    }
-
-    public static String decryptAnsiX98PinBlock(
-            byte[] pinBlockBytes, String pan, byte[] key)
-            throws Exception {
-        return decryptAnsiX98PinBlockHex(
-                pinBlockBytes, pan, key, DES_ECB_NO_PADDING_SPEC);
-    }
-
-    public static String decryptAnsiX98PinBlock(
-            String pinBlock, String pan, byte[] key)
-            throws Exception {
-        return decryptAnsiX98PinBlockHex(ISOUtil.hex2byte(pinBlock),
-                pan, key, DES_ECB_NO_PADDING_SPEC);
-    }
-
-    public static String decryptAnsiX98DesedePinBlock(
-            String pinBlock, String pan, byte[] key)
-            throws Exception {
-        return decryptAnsiX98PinBlockHex(ISOUtil.hex2byte(pinBlock),
-                pan, key, DESEDE_ECB_NO_PADDING_SPEC);
-    }
-
-    public static String decryptAnsiX98DesedePinBlock(
-            byte[] pinBlock, String pan, byte[] key)
-            throws Exception {
-        return decryptAnsiX98PinBlockHex(
-                pinBlock, pan, key, DESEDE_ECB_NO_PADDING_SPEC);
-    }
-
-    public static byte[] encryptToAnsiX98PinBlock(
-            String pin, String pan, byte[] key, String algorithmSpec)
-            throws Exception {
-        byte[] codedPinDataBytes = makeAnsiX98CodedPinBytes(pin, pan);
-        return encrypt(codedPinDataBytes, key, algorithmSpec, null);
-    }
-
-    public static String encryptToAnsiX98PinBlockHex(
-            String pin, String pan, byte[] key, String algorithmSpec)
-            throws Exception {
-        return ISOUtil.hexString(
-                encryptToAnsiX98PinBlock(pin, pan, key, algorithmSpec));
-    }
-
-    public static byte[] encryptToAnsiX98PinBlock(
-            String pin, String pan, byte[] key)
-            throws Exception {
-        return encryptToAnsiX98PinBlock(
-                pin, pan, key, DES_ECB_NO_PADDING_SPEC);
-    }
-
-    public static String encryptToAnsiX98PinBlockHex(
-            String pin, String pan, byte[] key)
-            throws Exception {
-        return encryptToAnsiX98PinBlockHex(
-                pin, pan, key, DES_ECB_NO_PADDING_SPEC);
-    }
-
-    public static String encryptToAnsiX98PinBlock(
-            long pin, BigInteger pan, byte[] key)
-            throws Exception {
-        return encryptToAnsiX98PinBlockHex(
-                "" + pin, pan.toString(), key, DES_ECB_NO_PADDING_SPEC);
-    }
-
-    public static String encryptToAnsiX98DesedePinBlock(
-            String pin, String pan, byte[] key)
-            throws Exception {
-        return encryptToAnsiX98PinBlockHex(
-                pin, pan, key, DESEDE_ECB_NO_PADDING_SPEC);
-    }
-
-    public static String extractAnsiX98PinFromBytes(
-            byte[] codedPinBytes, String pan)
-            throws Exception {
-        String panData = "0000"
-                + pan.substring(pan.length() - 13, pan.length() - 1);
-        byte[] panDataBytes = ISOUtil.hex2byte(panData);
-        byte[] pinBytes = ISOUtil.xor(panDataBytes, codedPinBytes);
-        String pinData = ISOUtil.hexString(pinBytes);
-        if (pinData.charAt(0) != '0')
-            throw new SecurityException(
-                    "ANSI X9.8 pin block (format 0) should begin with '0'");
-        int length = ISOUtil.parseInt(pinData.substring(1, 2), 16);
-        /*if (length > pinData.length())
-            length = 4;*/
-        return pinData.substring(2, 2 + length);
-    }
-
-    public static byte[] makeAnsiX98CodedPinBytes(String pin, String pan)
-            throws Exception {
-        if (pan.length() < 16)
-            pan = ISOUtil.padright(pan, 16, '0');
-        String pinData = "0" + Integer.toHexString(pin.length()) + pin;
-        pinData = ISOUtil.padright(pinData, 16, 'f');
-        String panData = "0000"
-                + pan.substring(pan.length() - 13, pan.length() - 1);
-        byte[] pinDataBytes = ISOUtil.hex2byte(pinData);
-        byte[] panDataBytes = ISOUtil.hex2byte(panData);
-        pinDataBytes = ISOUtil.xor(pinDataBytes, panDataBytes);
-        return pinDataBytes;
-    }
-
-    public static String encryptTrack2(String track2, String key)
-            throws Exception{
-            String subTrack2 = track2.substring(6);
-            subTrack2 = subTrack2.replaceFirst("=", "F");
-            byte[] encryptedTrack2 = encrypt(
-                    subTrack2.getBytes(), 0, subTrack2.length(),key.getBytes(),
-                    DESEDE_ALGORITHM_NAME, null);
-            return ISOUtil.hexString(encryptedTrack2);
-    }
-
-    public static String decryptTrack2(String track2, byte[] key)
-            throws Exception{
-        String subTrack2 = track2.substring(6);
-        byte[] plainSubTrack2Bytes = decrypt(ISOUtil.hex2byte(subTrack2), 0,
-                subTrack2.length(),key, DESEDE_ALGORITHM_NAME, null);
-        String plainTrack2 =
-                track2.substring(0, 5) + new String(plainSubTrack2Bytes);
-        if (plainTrack2.charAt(16) != 'F')
-            throw new SecurityException(
-                    "Faulty encrypted track2, index 16 must be 'F' while was '"
-                            + plainTrack2.charAt(16) +"'");
-        return plainTrack2.substring(0, 16) + '=' + plainTrack2.substring(17);
-    }
-
-    public static String makePinpadPinEncryption(
-            String pin, String pan, byte[] key)
-            throws Exception {
-        String pinIntoPan = StringUtil.fixWidthZeroPad(pin.length(), 2)
-                + pan.substring(0, 10) + pin;
-        return ISOUtil.hexString(
-                encrypt(ISOUtil.hex2byte(pinIntoPan), key,
-                        DES_ECB_NO_PADDING_SPEC, null));
     }
 
     public static byte[] encryptStreamZeroPad(
@@ -1109,17 +995,6 @@ public abstract class SecurityUtil {
     }
 
     public static int getResponseMacFieldNo(ISOMsg isoMessage) {
-        /*int maxFieldNo = isoMessage.getMaxField();
-        boolean hasDataFieldGreaterThan64 = false;
-        // If the only field greater than 64 is the mac itself, correct
-        // field no for new response mac should be 64 not 128, check this baby
-        for (int i = 65; i < maxFieldNo; i++) {
-            if (isoMessage.hasField(i)) {
-                hasDataFieldGreaterThan64 = true;
-                break;
-            }
-        }
-        return hasDataFieldGreaterThan64 ? 128 : 64;*/
         return isoMessage.getMaxField() > 64 ? 128 : 64;
     }
 }

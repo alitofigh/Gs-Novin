@@ -91,4 +91,10 @@ public interface Constants {
     public static final String REVERSALMUXES = "REVERSALMUXES";
     public static final String ISSIMIAREQUEST = "ISSIMIAREQUEST";
     public static final String INVALID_SIMIA_TRANSACTION = "INVALID_SIMIA_TRANSACTION";
+    public static final String TRANSACTION_ID = "transaction-id";
+    public static final String PROPERTY_CONFIG_NAME = "property";
+    public static final String NAME_ATTRIBUTE_NAME = "name";
+    public static final String VALUE_ATTRIBUTE_NAME = "value";
+    public static final String RESPONSE_CODE_KEY = "response-code";
+    public static final String RESPONSE_MESSAGE_KEY = "response-message";
 }

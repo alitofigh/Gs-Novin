@@ -10,8 +10,10 @@
     </participant>
 
     <group name="ips-transaction">
-        <participant class="org.gsstation.novin.core.participants.StoreValidation"/>
+        <!--<participant class="org.gsstation.novin.core.participants.StoreValidation"/>-->
         <participant class="org.gsstation.novin.core.participants.ValidationTransaction" />
+        <participant class="org.gsstation.novin.core.participants.ResponsePreparing" />
+        <participant class="org.gsstation.novin.core.participants.ResponseDelivery" />
     </group>
     <group name="invalid-transaction">
     </group>

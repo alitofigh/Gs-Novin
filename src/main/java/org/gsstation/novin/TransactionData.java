@@ -1,6 +1,7 @@
 package org.gsstation.novin;
 
 import lombok.Data;
+import org.gsstation.novin.core.common.KeyedObject;
 import org.gsstation.novin.packager.GsPackager;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOMsg;
@@ -14,8 +15,18 @@ import java.util.Date;
  */
 
 @Data
-public class TransactionData {
+public class TransactionData implements KeyedObject<String>, Cloneable {
 
+
+    private String key;
+    private ISOMsg isoMsg;
+    private String zoneId;
+    private String areaId;
+    private String cityId;
+    private String gsCode;
+    private String contactTelephone;
+    private String telephone1;
+    private String fax;
     private String gsId;
     private String ptId;
     private String shiftNo;
@@ -61,12 +72,38 @@ public class TransactionData {
     private String uploadFlag;
     private ISOMsg gsMessage;
 
-    public TransactionData() {}
+
+    public TransactionData() {
+        isoMsg = new ISOMsg();
+        isoMsg.setPackager(new GsPackager());
+    }
 
     public TransactionData(byte[] receivedStream) throws ISOException {
         gsMessage = new ISOMsg();
         gsMessage.setPackager(new GsPackager());
         gsMessage.unpack(receivedStream);
+    }
+
+    public void set(int fieldNo, String value) {
+        isoMsg.set(fieldNo, value);
+    }
+
+    public void set(int fieldNo, byte[] value) {
+        isoMsg.set(fieldNo, value);
+    }
+
+    public boolean hasField(int fieldNo) {
+        return isoMsg.hasField(fieldNo);
+    }
+
+    @Override
+    public String getKey() {
+        return key;
+    }
+
+    @Override
+    public void setKey(String key) {
+        this.key = key;
     }
 
 
