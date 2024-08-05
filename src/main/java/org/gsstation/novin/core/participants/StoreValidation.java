@@ -8,11 +8,12 @@ import org.jpos.iso.ISOMsg;
 import org.jpos.transaction.Context;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.gsstation.novin.core.common.ProtocolRulesBase.ORIGINAL_MESSAGE_KEY;
 import static org.gsstation.novin.core.common.ProtocolRulesBase.extractIsoMsg;
-import static org.gsstation.novin.core.dao.domain.EntityTypes.DAILY_TRANSACTION_RECORD;
-import static org.gsstation.novin.core.dao.domain.EntityTypes.TRANSACTION_RECORD;
+import static org.gsstation.novin.core.dao.domain.EntityTypes.*;
 
 /**
  * Created by A_Tofigh at 07/18/2024
@@ -23,11 +24,10 @@ public class StoreValidation extends GsBaseParticipant {
     public void doCommit(Context context) {
         ISOMsg isoMessage = extractIsoMsg(context);
         DailyTransactionRecordDao dao = new DailyTransactionRecordDao("");
-        BaseEntityTrx entity = convertIso(isoMessage, DAILY_TRANSACTION_RECORD);
-        dao.store(entity);
-        MainLogger.log("done store 1");
-        entity = convertIso(isoMessage, TRANSACTION_RECORD);
-        dao.store(entity);
+        List<BaseEntityTrx> entities = new ArrayList<>();
+        entities.set(0 ,convertIso(isoMessage, DAILY_TRANSACTION_RECORD));
+        entities.set(1 ,convertIso(isoMessage, TRANSACTION_RECORD));
+        entities.set(2 ,convertIso(isoMessage, SHIFT_TRANSACTION_RECORD));
         MainLogger.log("done store 2");
     }
 }

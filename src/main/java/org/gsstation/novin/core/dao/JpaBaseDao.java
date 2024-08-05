@@ -40,6 +40,27 @@ public abstract class JpaBaseDao<T> extends BaseDao<T> {
         }
     }
 
+    public void store(List<T> entities) throws GeneralDatabaseException {
+        EntityManager entityManager = null;
+        try {
+            entityManager = EntityManagerFactory.newEntityManager(
+                    databaseInstanceName, entities.get(0));
+            entityManager.setFlushMode(FlushModeType.COMMIT);
+            entityManager.getTransaction().begin();
+            for (T entity : entities) {
+                entityManager.persist(entity);
+            }
+            entityManager.getTransaction().commit();
+        } catch (GeneralDatabaseException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new GeneralDatabaseException(e);
+        } finally {
+            if (entityManager != null)
+                entityManager.close();
+        }
+    }
+
     /*public <T extends MyClass> Collection<T> bulkSave(Collection<T> entities) {
         final List<T> savedEntities = new ArrayList<T>(entities.size());
         int i = 0;

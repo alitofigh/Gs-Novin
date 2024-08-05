@@ -31,7 +31,8 @@ public abstract class ProtocolRulesBase {
     public static final String CONTEXT_ADDITIONAL_DATA = "context-additional-data";
     public static final String INVALID_REQUEST_TRANSACTION_GROUP_NAME =
             "invalid-request-transaction";
-    public static final String INVALID_RESPONSE_TRANSACTION_GROUP_NAME = "invalid-response-transaction";
+    public static final String INVALID_TRANSACTION_GROUP_NAME = "invalid-transaction";
+    public static final String TARGET_TRANSACTION_GROUP_NAME = "target-transaction";
     public static final String MAIN_LOGGER_QBEAN_NAME = "main-logger";
     public static final String MAIN_LOGGER_QBEAN_LEGACY_NAME = "Q2";
     public static final String STANDARD_TIME_FORMAT = "HH:mm:ss.SSS";

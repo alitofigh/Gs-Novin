@@ -6,7 +6,8 @@ package org.gsstation.novin.core.dao.domain;
 
 public enum EntityTypes {
     TRANSACTION_RECORD(TransactionRecord.class),
-    DAILY_TRANSACTION_RECORD(DailyTransactionRecord.class);
+    DAILY_TRANSACTION_RECORD(DailyTransactionRecord.class),
+    SHIFT_TRANSACTION_RECORD(DailyTransactionRecord.class);
 
 
     Class c;

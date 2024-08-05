@@ -22,6 +22,7 @@ public class TransactionData implements KeyedObject<String>, Cloneable {
     private ISOMsg isoMsg;
     private String zoneId;
     private String areaId;
+    private String processingCode;
     private String cityId;
     private String gsCode;
     private String contactTelephone;

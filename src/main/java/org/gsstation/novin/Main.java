@@ -43,6 +43,7 @@ public class Main {
         TransactionData transactionData = new TransactionData();
         transactionData.setGsId("0040");
         transactionData.setPtId("14");
+        transactionData.setProcessingCode("160000");
         transactionData.setShiftNo("2024040601");
         transactionData.setFuelTtc("414688");
         transactionData.setEpurseTtc("0");
@@ -82,6 +83,7 @@ public class Main {
         transactionData.setAfterBalance("0");
         transactionData.setRFU("433725847");
         transactionData.setUploadFlag("0");
+        transactionData.setKey("222222222222222222222222222222222222222222222222");
         return createGsMessage.createGsMessage(transactionData);
     }
 
@@ -99,6 +101,8 @@ public class Main {
         transactionData.setContactTelephone("02284234843");
         transactionData.setTelephone1("4234843");
         transactionData.setFax("09105163911");
+        transactionData.setProcessingCode("140000");
+        transactionData.setKey("111111111111111111111111111111111111111111111111");
         return createGsMessage.createGsMessage(transactionData);
     }
 }

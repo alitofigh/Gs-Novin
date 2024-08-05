@@ -1,8 +1,6 @@
 package org.gsstation.novin.core.participants;
 
-import org.gsstation.novin.core.common.ProtocolRulesBase;
 import org.gsstation.novin.core.logging.MainLogger;
-import org.gsstation.novin.core.module.ContextWrapper;
 import org.jpos.core.Configurable;
 import org.jpos.core.Configuration;
 import org.jpos.core.ConfigurationException;
@@ -13,8 +11,7 @@ import org.jpos.transaction.GroupSelector;
 
 import java.io.Serializable;
 
-import static org.gsstation.novin.core.common.ProtocolRulesBase.INVALID_RESPONSE_TRANSACTION_GROUP_NAME;
-import static org.gsstation.novin.core.common.ProtocolRulesBase.extractIsoMsg;
+import static org.gsstation.novin.core.common.ProtocolRulesBase.*;
 
 /**
  * Created by A_Tofigh at 07/18/2024
@@ -38,11 +35,15 @@ public class TransactionGroupSelector implements GroupSelector, Configurable {
             isoMessage = extractIsoMsg(context);
 
             String mti = isoMessage.getMTI();
-            if ("0100".equals(mti)) {
-                targetTransactionGroup = "ips-transaction";
+            String processingCode = isoMessage.getString(4);
+            if ("0100".equals(mti) && "140000".equals(processingCode)) {
+                targetTransactionGroup = "gs-info";
+            } else if ("0100".equals(mti) && "160000".equals(processingCode)) {
+                targetTransactionGroup = "ipc-transaction";
             } else {
-                targetTransactionGroup = INVALID_RESPONSE_TRANSACTION_GROUP_NAME;
+                targetTransactionGroup = INVALID_TRANSACTION_GROUP_NAME;
             }
+            context.put(TARGET_TRANSACTION_GROUP_NAME, targetTransactionGroup);
         } catch (ISOException e) {
             throw new RuntimeException(e);
         }

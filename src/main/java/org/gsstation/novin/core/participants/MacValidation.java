@@ -8,6 +8,7 @@ import org.jpos.transaction.Context;
 
 import java.util.Arrays;
 
+import static org.gsstation.novin.core.common.ProtocolRulesBase.TARGET_TRANSACTION_GROUP_NAME;
 import static org.gsstation.novin.core.common.ProtocolRulesBase.extractIsoMsg;
 
 /**
@@ -17,10 +18,17 @@ public class MacValidation extends GsBaseParticipant {
 
     @Override
     public void doCommit(Context context) throws Exception {
+        String targetTransactionGroup = context.get(TARGET_TRANSACTION_GROUP_NAME);
         ISOMsg isoMessage = extractIsoMsg(context);
         byte[] mac = isoMessage.getBytes(64);
-        byte[] computedMacBytes =
-                SecurityUtil.computeGsMessageMac(isoMessage, macKeys.get("key3"));
+        byte[] computedMacBytes;
+        if ("gs-info".equals(targetTransactionGroup)) {
+            computedMacBytes =
+                    SecurityUtil.computeGsMessageMac(isoMessage, macKeys.get("key1"));
+        } else {
+            computedMacBytes =
+                    SecurityUtil.computeGsMessageMac(isoMessage, macKeys.get("key3"));
+        }
         if (!Arrays.equals(computedMacBytes, mac))
             throw new InvalidMacException();
 

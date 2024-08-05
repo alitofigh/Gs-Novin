@@ -13,4 +13,6 @@ public class DailyTransactionRecordDao extends JpaBaseDao<BaseEntityTrx>{
     public DailyTransactionRecordDao(Class<BaseEntityTrx> entityType, String databaseInstanceName) {
         super(entityType, databaseInstanceName);
     }
+
+
 }
